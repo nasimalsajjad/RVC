@@ -7,28 +7,35 @@ from sklearn.datasets import fetch_rcv1
 from typing import Tuple, Dict, Any, Union
 from scipy.sparse import csr_matrix
 import logging
+import os
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 class RCV1DataLoader:
     """Loader for the RCV1 dataset."""
     
-    def __init__(self, cache_dir: str = None, convert_to_dense: bool = False):
+    def __init__(self, cache_dir: str = None, convert_to_dense: bool = False, save_dir: str = "data/raw"):
         """
         Initialize the RCV1 data loader.
         
         Args:
             cache_dir (str, optional): Directory to cache the dataset. Defaults to None.
             convert_to_dense (bool, optional): Whether to convert sparse matrix to dense array. Defaults to False.
+            save_dir (str, optional): Directory to save the data. Defaults to "data/raw".
         """
         self.cache_dir = cache_dir
         self.convert_to_dense = convert_to_dense
+        self.save_dir = save_dir
         self.data = None
         self.target = None
         
+        # Create save directory if it doesn't exist
+        os.makedirs(self.save_dir, exist_ok=True)
+        
     def load_data(self) -> Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]:
         """
-        Load the RCV1 dataset.
+        Load the RCV1 dataset and save to CSV files.
         
         Returns:
             Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]: Features and target data
@@ -43,11 +50,39 @@ class RCV1DataLoader:
                 logger.info("Converting sparse matrix to dense array...")
                 self.data = self.data.toarray()
                 self.target = self.target.toarray()
+            
+            # Save data to CSV files
+            self._save_data()
                 
             logger.info(f"Dataset loaded successfully. Shape: {self.data.shape}")
             return self.data, self.target
         except Exception as e:
             logger.error(f"Error loading RCV1 dataset: {str(e)}")
+            raise
+            
+    def _save_data(self):
+        """Save data and target to CSV files."""
+        try:
+            # Convert sparse matrices to dense for saving
+            data_to_save = self.data.toarray() if isinstance(self.data, csr_matrix) else self.data
+            target_to_save = self.target.toarray() if isinstance(self.target, csr_matrix) else self.target
+            
+            # Create DataFrames
+            data_df = pd.DataFrame(data_to_save)
+            target_df = pd.DataFrame(target_to_save)
+            
+            # Save to CSV
+            data_path = os.path.join(self.save_dir, "rcv1_data.csv")
+            target_path = os.path.join(self.save_dir, "rcv1_target.csv")
+            
+            data_df.to_csv(data_path, index=False)
+            target_df.to_csv(target_path, index=False)
+            
+            logger.info(f"Data saved to {data_path}")
+            logger.info(f"Target saved to {target_path}")
+            
+        except Exception as e:
+            logger.error(f"Error saving data: {str(e)}")
             raise
             
     def get_sample(self, n_samples: int = 1000) -> Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]:
@@ -82,5 +117,7 @@ class RCV1DataLoader:
             'n_classes': self.target.shape[1],
             'feature_names': [f'feature_{i}' for i in range(self.data.shape[1])],
             'target_names': [f'class_{i}' for i in range(self.target.shape[1])],
-            'is_sparse': isinstance(self.data, csr_matrix)
+            'is_sparse': isinstance(self.data, csr_matrix),
+            'data_path': os.path.join(self.save_dir, "rcv1_data.csv"),
+            'target_path': os.path.join(self.save_dir, "rcv1_target.csv")
         } 

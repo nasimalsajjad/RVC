@@ -4,6 +4,8 @@ Tests for the RCV1 data loader.
 import pytest
 import numpy as np
 from scipy.sparse import csr_matrix
+import os
+import pandas as pd
 from src.data.data_loader import RCV1DataLoader
 
 @pytest.fixture
@@ -22,6 +24,7 @@ def test_data_loader_initialization():
     assert loader.data is None
     assert loader.target is None
     assert not loader.convert_to_dense
+    assert os.path.exists(loader.save_dir)
 
 def test_load_data_sparse(data_loader):
     """Test loading the RCV1 dataset in sparse format."""
@@ -35,6 +38,18 @@ def test_load_data_sparse(data_loader):
     assert data.shape[0] > 0
     assert target.shape[0] > 0
     assert data.shape[0] == target.shape[0]
+    
+    # Check if files were saved
+    data_path = os.path.join(data_loader.save_dir, "rcv1_data.csv")
+    target_path = os.path.join(data_loader.save_dir, "rcv1_target.csv")
+    assert os.path.exists(data_path)
+    assert os.path.exists(target_path)
+    
+    # Check saved data
+    saved_data = pd.read_csv(data_path)
+    saved_target = pd.read_csv(target_path)
+    assert saved_data.shape[0] == data.shape[0]
+    assert saved_target.shape[0] == target.shape[0]
 
 def test_load_data_dense(dense_data_loader):
     """Test loading the RCV1 dataset in dense format."""
@@ -48,6 +63,12 @@ def test_load_data_dense(dense_data_loader):
     assert data.shape[0] > 0
     assert target.shape[0] > 0
     assert data.shape[0] == target.shape[0]
+    
+    # Check if files were saved
+    data_path = os.path.join(dense_data_loader.save_dir, "rcv1_data.csv")
+    target_path = os.path.join(dense_data_loader.save_dir, "rcv1_target.csv")
+    assert os.path.exists(data_path)
+    assert os.path.exists(target_path)
 
 def test_get_sample(data_loader):
     """Test getting a sample from the dataset."""
@@ -73,6 +94,8 @@ def test_get_data_info(data_loader):
     assert 'feature_names' in info
     assert 'target_names' in info
     assert 'is_sparse' in info
+    assert 'data_path' in info
+    assert 'target_path' in info
     
     # Check values
     assert info['n_samples'] > 0
@@ -80,4 +103,8 @@ def test_get_data_info(data_loader):
     assert info['n_classes'] > 0
     assert len(info['feature_names']) == info['n_features']
     assert len(info['target_names']) == info['n_classes']
-    assert info['is_sparse'] is True 
+    assert info['is_sparse'] is True
+    
+    # Check if paths exist
+    assert os.path.exists(info['data_path'])
+    assert os.path.exists(info['target_path']) 
