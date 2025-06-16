@@ -5,7 +5,7 @@ import pandas as pd
 import numpy as np
 from sklearn.datasets import fetch_rcv1
 from typing import Tuple, Dict, Any, Union
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, save_npz
 import logging
 import os
 from pathlib import Path
@@ -35,7 +35,7 @@ class RCV1DataLoader:
         
     def load_data(self) -> Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]:
         """
-        Load the RCV1 dataset and save to CSV files.
+        Load the RCV1 dataset and save to files.
         
         Returns:
             Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]: Features and target data
@@ -51,7 +51,7 @@ class RCV1DataLoader:
                 self.data = self.data.toarray()
                 self.target = self.target.toarray()
             
-            # Save data to CSV files
+            # Save data to files
             self._save_data()
                 
             logger.info(f"Dataset loaded successfully. Shape: {self.data.shape}")
@@ -61,22 +61,19 @@ class RCV1DataLoader:
             raise
             
     def _save_data(self):
-        """Save data and target to CSV files."""
+        """Save data and target to files."""
         try:
-            # Convert sparse matrices to dense for saving
-            data_to_save = self.data.toarray() if isinstance(self.data, csr_matrix) else self.data
-            target_to_save = self.target.toarray() if isinstance(self.target, csr_matrix) else self.target
+            data_path = os.path.join(self.save_dir, "rcv1_data.npz")
+            target_path = os.path.join(self.save_dir, "rcv1_target.npz")
             
-            # Create DataFrames
-            data_df = pd.DataFrame(data_to_save)
-            target_df = pd.DataFrame(target_to_save)
-            
-            # Save to CSV
-            data_path = os.path.join(self.save_dir, "rcv1_data.csv")
-            target_path = os.path.join(self.save_dir, "rcv1_target.csv")
-            
-            data_df.to_csv(data_path, index=False)
-            target_df.to_csv(target_path, index=False)
+            if isinstance(self.data, csr_matrix):
+                # Save sparse matrices using scipy's save_npz
+                save_npz(data_path, self.data)
+                save_npz(target_path, self.target)
+            else:
+                # Save dense arrays using numpy's save
+                np.save(data_path, self.data)
+                np.save(target_path, self.target)
             
             logger.info(f"Data saved to {data_path}")
             logger.info(f"Target saved to {target_path}")
@@ -118,6 +115,6 @@ class RCV1DataLoader:
             'feature_names': [f'feature_{i}' for i in range(self.data.shape[1])],
             'target_names': [f'class_{i}' for i in range(self.target.shape[1])],
             'is_sparse': isinstance(self.data, csr_matrix),
-            'data_path': os.path.join(self.save_dir, "rcv1_data.csv"),
-            'target_path': os.path.join(self.save_dir, "rcv1_target.csv")
+            'data_path': os.path.join(self.save_dir, "rcv1_data.npz"),
+            'target_path': os.path.join(self.save_dir, "rcv1_target.npz")
         } 
