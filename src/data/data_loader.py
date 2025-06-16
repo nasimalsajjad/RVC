@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class RCV1DataLoader:
     """Loader for the RCV1 dataset."""
     
-    def __init__(self, cache_dir: str = None, convert_to_dense: bool = False, save_dir: str = "data/raw"):
+    def __init__(self, cache_dir: str = None, convert_to_dense: bool = False, save_dir: str = "data/raw", use_mock: bool = False):
         """
         Initialize the RCV1 data loader.
         
@@ -23,15 +23,33 @@ class RCV1DataLoader:
             cache_dir (str, optional): Directory to cache the dataset. Defaults to None.
             convert_to_dense (bool, optional): Whether to convert sparse matrix to dense array. Defaults to False.
             save_dir (str, optional): Directory to save the data. Defaults to "data/raw".
+            use_mock (bool, optional): Whether to use mock data for testing. Defaults to False.
         """
         self.cache_dir = cache_dir
         self.convert_to_dense = convert_to_dense
         self.save_dir = save_dir
+        self.use_mock = use_mock
         self.data = None
         self.target = None
         
         # Create save directory if it doesn't exist
         os.makedirs(self.save_dir, exist_ok=True)
+        
+    def _create_mock_data(self) -> Tuple[csr_matrix, csr_matrix]:
+        """Create mock data for testing."""
+        n_samples = 100
+        n_features = 100
+        n_classes = 10
+        
+        # Create sparse matrices
+        data = csr_matrix((n_samples, n_features))
+        target = csr_matrix((n_samples, n_classes))
+        
+        # Add some random non-zero elements
+        data[0, 0] = 1
+        target[0, 0] = 1
+        
+        return data, target
         
     def load_data(self) -> Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]:
         """
@@ -41,10 +59,14 @@ class RCV1DataLoader:
             Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]: Features and target data
         """
         try:
-            logger.info("Loading RCV1 dataset...")
-            rcv1 = fetch_rcv1(data_home=self.cache_dir)
-            self.data = rcv1.data
-            self.target = rcv1.target
+            if self.use_mock:
+                logger.info("Using mock data for testing...")
+                self.data, self.target = self._create_mock_data()
+            else:
+                logger.info("Loading RCV1 dataset...")
+                rcv1 = fetch_rcv1(data_home=self.cache_dir)
+                self.data = rcv1.data
+                self.target = rcv1.target
             
             if self.convert_to_dense:
                 logger.info("Converting sparse matrix to dense array...")
