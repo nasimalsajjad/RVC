@@ -4,7 +4,8 @@ Data loading utilities for the RCV1 dataset.
 import pandas as pd
 import numpy as np
 from sklearn.datasets import fetch_rcv1
-from typing import Tuple, Dict, Any
+from typing import Tuple, Dict, Any, Union
+from scipy.sparse import csr_matrix
 import logging
 
 logger = logging.getLogger(__name__)
@@ -12,36 +13,44 @@ logger = logging.getLogger(__name__)
 class RCV1DataLoader:
     """Loader for the RCV1 dataset."""
     
-    def __init__(self, cache_dir: str = None):
+    def __init__(self, cache_dir: str = None, convert_to_dense: bool = False):
         """
         Initialize the RCV1 data loader.
         
         Args:
             cache_dir (str, optional): Directory to cache the dataset. Defaults to None.
+            convert_to_dense (bool, optional): Whether to convert sparse matrix to dense array. Defaults to False.
         """
         self.cache_dir = cache_dir
+        self.convert_to_dense = convert_to_dense
         self.data = None
         self.target = None
         
-    def load_data(self) -> Tuple[Any, Any]:
+    def load_data(self) -> Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]:
         """
         Load the RCV1 dataset.
         
         Returns:
-            Tuple[Any, Any]: Features and target data
+            Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]: Features and target data
         """
         try:
             logger.info("Loading RCV1 dataset...")
             rcv1 = fetch_rcv1(data_home=self.cache_dir)
             self.data = rcv1.data
             self.target = rcv1.target
+            
+            if self.convert_to_dense:
+                logger.info("Converting sparse matrix to dense array...")
+                self.data = self.data.toarray()
+                self.target = self.target.toarray()
+                
             logger.info(f"Dataset loaded successfully. Shape: {self.data.shape}")
             return self.data, self.target
         except Exception as e:
             logger.error(f"Error loading RCV1 dataset: {str(e)}")
             raise
             
-    def get_sample(self, n_samples: int = 1000) -> Tuple[Any, Any]:
+    def get_sample(self, n_samples: int = 1000) -> Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]:
         """
         Get a random sample from the dataset.
         
@@ -49,7 +58,7 @@ class RCV1DataLoader:
             n_samples (int): Number of samples to return
             
         Returns:
-            Tuple[Any, Any]: Sampled features and target data
+            Tuple[Union[np.ndarray, csr_matrix], Union[np.ndarray, csr_matrix]]: Sampled features and target data
         """
         if self.data is None:
             self.load_data()
@@ -72,5 +81,6 @@ class RCV1DataLoader:
             'n_features': self.data.shape[1],
             'n_classes': self.target.shape[1],
             'feature_names': [f'feature_{i}' for i in range(self.data.shape[1])],
-            'target_names': [f'class_{i}' for i in range(self.target.shape[1])]
+            'target_names': [f'class_{i}' for i in range(self.target.shape[1])],
+            'is_sparse': isinstance(self.data, csr_matrix)
         } 
